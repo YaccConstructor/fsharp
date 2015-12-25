@@ -20,6 +20,8 @@ open Microsoft.FSharp.Compiler.Lexhelp
 
 let debug = false
 
+let mutable magik = false
+
 let stringOfPos (p:Position) = sprintf "(%d:%d)" p.OriginalLine p.Column
 let outputPos os (p:Position) = Printf.fprintf os "(%d:%d)" p.OriginalLine p.Column
 
@@ -500,8 +502,8 @@ type PositionWithColumn =
 //----------------------------------------------------------------------------
 // build a LexFilter
 //--------------------------------------------------------------------------*)
-type LexFilterImpl (lightSyntaxStatus:LightSyntaxStatus, compilingFsLib, lexer, lexbuf: UnicodeLexing.Lexbuf)  = 
-
+type LexFilterImpl (lightSyntaxStatus:LightSyntaxStatus, compilingFsLib, lexer, lexbuf: UnicodeLexing.Lexbuf)  =     
+    
     //----------------------------------------------------------------------------
     // Part I. Building a new lex stream from an old
     //
@@ -554,12 +556,36 @@ type LexFilterImpl (lightSyntaxStatus:LightSyntaxStatus, compilingFsLib, lexer, 
     // appears consistent and correct for the wrapped lexer function. 
     let mutable savedLexbufState = Unchecked.defaultof<LexbufState>
     let mutable haveLexbufState = false
+    let mutable isFStar = false
+    let mutable verify = false
     let runWrappedLexerInConsistentLexbufState() =
         let state = if haveLexbufState then savedLexbufState else getLexbufState()
         setLexbufState state
         let lastTokenStart = state.StartPos
         let lastTokenEnd = state.EndPos
-        let token = lexer lexbuf
+//        printfn "GSV!!!"
+        let token =
+          let mutable stop = false
+          let mutable t = lexer lexbuf 
+          match t with
+          | FST_VERIFY ->
+              verify <- true
+              magik <- true
+              printfn "GSV !is fstar" 
+              t <- lexer lexbuf
+          | VAL ->
+             if verify && not isFStar
+             then
+              stop <- false
+              while not stop do
+                t <- lexer lexbuf 
+                match t with
+                | LET _ -> stop <- true
+                | _ -> ()
+              
+          | _ -> ()
+          t 
+        //!!!!!!!gsv
         // Now we've got the token, remember the lexbuf state, associating it with the token 
         // and remembering it as the last observed lexbuf state for the wrapped lexer function. 
         let tokenLexbufState = getLexbufState()
@@ -2266,6 +2292,7 @@ type LexFilter (lightSyntaxStatus:LightSyntaxStatus, compilingFsLib, lexer, lexb
     member __.Lexer _ = 
         let rec loop() =
             let token = popNextToken()
+            if magik then printfn "%A" token
             match token with
             | RBRACE -> 
                 insertComingSoonTokens RBRACE_COMING_SOON RBRACE_IS_HERE

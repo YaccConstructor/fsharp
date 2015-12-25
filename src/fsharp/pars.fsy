@@ -151,6 +151,11 @@ let rangeOfLongIdent(lid:LongIdent) =
 
 %} 
 
+%token <int> FST_FORALL
+%token <int> FST_EXIST
+%token FST_VERIFY FST_CONJUNCTION FST_DISJUNCTION
+
+
 %token <byte[]> BYTEARRAY
 %token <string> STRING 
 %token <string> KEYWORD_STRING // Like __SOURCE_DIRECTORY__

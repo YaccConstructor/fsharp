@@ -227,6 +227,11 @@ let ident_char =
 let ident = ident_start_char ident_char*
 
 rule token args skip = parse
+|  "#verify" {FST_VERIFY}
+ | "/\\"  { FST_CONJUNCTION }
+ | "\\/"  { FST_DISJUNCTION }
+
+
  | ident 
      { Keywords.KeywordOrIdentifierToken args lexbuf (lexeme lexbuf) }
  | "do!" 

@@ -72,6 +72,7 @@ open FullCompiler
 
 let FSharpSigFileSuffixes = [".mli";".fsi"]
 let mlCompatSuffixes = [".mli";".ml"]
+let FStarFileSufx = [".fst"]
 let FSharpImplFileSuffixes = [".ml";".fs";".fsscript";".fsx"]
 let resSuffixes = [".resx"]
 let FSharpScriptFileSuffixes = [".fsscript";".fsx"]
