@@ -1,5 +1,12 @@
 @echo off
 
+del src\fsharp\FSharp.Compiler-proto\pppars.fs 
+del src\fsharp\FSharp.Compiler-proto\pppars.fsi 
+
+del src\fsharp\FSharp.Compiler-proto\pars.fs 
+del src\fsharp\FSharp.Compiler-proto\pars.fsi 
+
+
 :: Check prerequisites
 set _msbuildexe="%ProgramFiles(x86)%\MSBuild\12.0\Bin\MSBuild.exe"
 if not exist %_msbuildexe% set _msbuildexe="%ProgramFiles%\MSBuild\12.0\Bin\MSBuild.exe"
@@ -16,6 +23,13 @@ del /F /S /Q lib\release
 ngen install lib\proto\fsc-proto.exe
 %_msbuildexe% src\fsharp-library-build.proj /p:TargetFramework=net40 /p:Configuration=Release
 %_msbuildexe% src\fsharp-library-unittests-build.proj /p:TargetFramework=net40 /p:Configuration=Release
+
+del src\fsharp\FSharp.Compiler\pppars.fs 
+del src\fsharp\FSharp.Compiler\pppars.fsi 
+
+del src\fsharp\FSharp.Compiler\pars.fs 
+del src\fsharp\FSharp.Compiler\pars.fsi 
+
 %_msbuildexe% src\fsharp-compiler-build.proj /p:TargetFramework=net40 /p:Configuration=Release
 %_msbuildexe% src\fsharp-compiler-unittests-build.proj /p:TargetFramework=net40 /p:Configuration=Release
 %_msbuildexe% src\fsharp-library-build.proj /p:TargetFramework=portable47 /p:Configuration=Release
