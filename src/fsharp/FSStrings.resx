@@ -252,6 +252,27 @@
   <data name="Parser.TOKEN.IDENT" xml:space="preserve">
     <value>identifier</value>
   </data>
+
+  <data name="Parser.TOKEN.IMPLIES" xml:space="preserve">
+    <value>symbol '==&gt;'</value>
+  </data>
+  <data name="Parser.TOKEN.IFF" xml:space="preserve">
+    <value>symbol '&lt;==&gt;'</value>
+  </data>
+  <data name="Parser.TOKEN.CONJUNCTION" xml:space="preserve">
+    <value>symbol '/\'</value>
+  </data>
+  <data name="Parser.TOKEN.DISJUNCTION" xml:space="preserve">
+    <value>symbol '\/'</value>
+  </data>
+  <data name="Parser.TOKEN.FORALL" xml:space="preserve">
+    <value>keyword 'forall'</value>
+  </data>
+  <data name="Parser.TOKEN.EXIST" xml:space="preserve">
+    <value>keyword 'exist'</value>
+  </data>
+
+
   <data name="Parser.TOKEN.INT" xml:space="preserve">
     <value>integer literal</value>
   </data>

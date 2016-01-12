@@ -1,5 +1,4 @@
 // Copyright (c) Microsoft Open Technologies, Inc.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
-
 %{
 
 #nowarn "1182"  // generated code has lots of unused "parseState"
@@ -151,9 +150,9 @@ let rangeOfLongIdent(lid:LongIdent) =
 
 %} 
 
-%token <int> FST_FORALL
-%token <int> FST_EXIST
-%token FST_VERIFY FST_CONJUNCTION FST_DISJUNCTION
+%token <int> FORALL
+%token <int> EXIST
+%token FST_VERIFY CONJUNCTION DISJUNCTION IFF IMPLIES
 
 
 %token <byte[]> BYTEARRAY
@@ -1181,23 +1180,299 @@ moduleDefnOrDirective:
       { [ SynModuleDecl.HashDirective ($1,rhs2 parseState 1 1) ] } 
 
 
+/* FSTAR */
+
+fst_typ:
+   fst_simpleTerm  { printfn "fst_type" } // { $1 }
+
+/*  | FORALL binders DOT qpat noSeqTerm
+      {
+        match $2 with 
+            | [] -> raise (Error("Missing binders for a quantifier", rhs2 parseState 1 2))
+            | _ -> mk_term (QForall($2,$4,$5)) (rhs2 parseState 1 5) Formula
+      }
+
+  | EXISTS binders DOT qpat noSeqTerm
+      {
+        match $2 with 
+            | [] -> raise (Error("Missing binders for a quantifier", rhs2 parseState 1 2))
+            | _ -> mk_term (QExists($2,$4,$5)) (rhs2 parseState 1 5) Formula
+      }
+*/
+
+fst_simpleTerm:
+   tmIff {}//{ $1 }
+
+  /*| FUN atomicPattern atomicPatterns funArrow term
+      {
+        $4 (Abs($2::$3, $5)) (rhs2 parseState 1 5) 
+      }
+    */
+
+tmIff:
+  | tmImplies IFF tmIff  {}
+      /*{
+        mk_term (Op("<==>", [$1; $3])) (rhs2 parseState 1 3) Formula
+      } */
+
+  | tmImplies{}
+      //{ $1 }
+
+impl_t: tmDisjunction IMPLIES {printfn "impl head"}
+
+tmImplies:
+  | impl_t tmImplies {printfn "implies 1"}
+      /*{
+        mk_term (Op("==>", [$1; $3])) (rhs2 parseState 1 3) Formula
+      } */
+
+  | tmDisjunction  {printfn "implies 2"}
+      //{ $1 }
+
+tmDisjunction:
+  | tmDisjunction DISJUNCTION tmConjunction {}
+      //{ mk_term (Op("\\/", [$1;$3])) (rhs2 parseState 1 3) Formula }
+      
+  | tmConjunction {}
+      //{ $1 }
+
+tmConjunction:
+  | tmConjunction CONJUNCTION tupleExpr {}
+      //{ mk_term (Op("/\\", [$1;$3])) (rhs2 parseState 1 3) Formula }
+
+  | tmTuple {}
+      //{ $1 }
+
+tmTuple:
+  | tupleN {printfn "tmTuple"}
+     /* {
+        match $1 with 
+          | [x] -> x
+          | components -> mkTuple components (rhs2 parseState 1 1)
+      }*/
+
+tupleN:
+  | tmEq                   {} //    { [$1] }
+  | tmEq COMMA tupleN      {} // { $1::$3 }
+
+
+tmEq:
+/*  | tmEq COLON_EQUALS tmOr
+      {
+        mk_term (Op(":=", [$1; $3])) (rhs2 parseState 1 3) Un
+      }
+*/
+  | tmOr {}
+  //    { $1 }
+
+tmOr:
+  | tmOr BAR_BAR tmAnd
+     {} // { mk_term (Op("||", [$1; $3])) (rhs2 parseState 1 3) Un}
+
+  | tmAnd
+      {}//{ $1 }
+
+tmAnd:
+  | tmAnd AMP_AMP cmpTerm
+      {}//{ mk_term (Op("&&", [$1;$3])) (rhs2 parseState 1 3) Un}
+
+  | cmpTerm
+      {}//{ $1 }
+
+ddd: cmpTerm comparisonOp {printfn "conp head"}
+      
+cmpTerm:
+  | ddd tmCons
+      {printfn "cmpTerm 1"}//{ mk_term (Op($2, [$1;$3])) (rhs2 parseState 1 3) Expr }
+  | tmCons 
+      {printfn "cmpTerm 2"}//{ $1 }
+
+comparisonOp:
+ // | CUSTOM_OP { $1 }
+  | EQUALS    {}//{ "=" }
+  | LESS {}
+  | GREATER {}
+  | INFIX_COMPARE_OP {}
+ 
+tmCons:
+  | product COLON_COLON tmCons
+      {}//{ consTerm (rhs parseState 2) $1 $3 }
+
+  | product
+      {}//{ $1 }
+
+product: 
+  | productDomain RARROW product {printfn "product1"}
+    /* {
+        let aq, tm = $1 in 
+        let b = match extract_named_refinement tm with 
+            | None -> mk_binder (NoName tm) (rhs parseState 1) Un aq
+            | Some (x, t, f) -> mkRefinedBinder x t f (rhs2 parseState 1 1) aq in
+        mk_term (Product([b], $3)) (rhs2 parseState 1 3)  Un
+     
+     }*/
+
+  | dtupleTerm 
+      {printfn "product2"} //{ $1 }
+
+productDomain:
+  | aqual dtupleTerm {} //{ (Some $1, $2) }
+  | dtupleTerm      {} //{ (None, $1)    }
+
+dtupleTerm:
+  | arithTerm AMP dtupleTerm {}
+      /*{ 
+        let x, t, f = match extract_named_refinement $1 with 
+            | Some (x, t, f) -> x, t, f
+            | _ -> raise (Error("Missing binder for the first component of a dependent tuple", rhs2 parseState 1 2)) in
+        let dom = mkRefinedBinder x t f (rhs2 parseState 1 2) None in
+        let tail = $3 in
+        let dom, res = match tail.tm with 
+            | Sum(dom', res) -> dom::dom', res
+            | _ -> [dom], tail in 
+        mk_term (Sum(dom, res)) (rhs2 parseState 1 6) Type
+      } */
+
+  | arithTerm
+     {} //{ $1 }
+  
+arithTerm:
+  | plusOp 
+      {printfn "arith term"}//{ $1 }
+
+plusOp:
+  | minusOp PLUS_MINUS_OP plusOp
+      {}//{ mk_term (Op("+", [$1;$3])) (rhs2 parseState 1 3) Un}
+
+  | minusOp
+      {} //{ $1 }
+
+minusOp:
+  /*| minusOp MINUS_OP starDivModTerm
+      { mk_term (Op("-", [$1;$3])) (rhs2 parseState 1 3) Un}
+    */
+  | starDivModTerm 
+      {}//{ $1 }
+
+
+starDivModTerm:
+  | refinementTerm STAR starDivModTerm {}
+    /*  { 
+        mk_term (Op("*", [$1;$3])) (rhs2 parseState 1 3) Un
+      }*/
+
+ /* | unaryTerm DIV_MOD_OP starDivModTerm
+      { mk_term (Op($2, [$1;$3])) (rhs2 parseState 1 3) Un}
+   */
+  | refinementTerm
+     {}//{ $1 }
+
+
+fst_ss: ident COLON appTerm LBRACE {printfn "!!!!!!"}
+
+refinementTerm:
+  | ident COLON appTerm {printfn "refinementTerm 1"}
+      /*{
+        mk_term (NamedTyp($1, $3)) (rhs2 parseState 1 3) Type 
+      }*/
+      
+  | fst_ss fst_typ rbrace {printfn "refinementTerm 2"}
+/*      {
+        mk_term (Refine(mk_binder (Annotated($1, $3)) (rhs2 parseState 1 3) Type None, $5)) 
+        (rhs2 parseState 1 6) Type
+      }*/
+/*      
+  | LBRACE recordExp RBRACE { $2 }
+*/
+  | unaryTerm {printfn "refinementTerm 3"} //{ $1 }
+  
+aqual:
+  //| HASH      //{ Implicit }
+  | EQUALS   {} //{ Equality }
+
+/*refineOpt:
+  |                       {} //{ None }
+  | LBRACE formula RBRACE {}// { Some $2 }
+  */
+
+
+unaryTerm: 
+  | PLUS_MINUS_OP atomicTerm
+    {}//  { mk_term (Op("+", [$2])) (rhs2 parseState 1 3) Expr }
+
+  /*| MINUS_OP atomicTerm
+      { mk_term (Op("-", [$2])) (rhs2 parseState 1 3) Expr }
+    
+  | TILDE atomicTerm
+      { mk_term (Op($1, [$2])) (rhs2 parseState 1 3) Formula }
+    */
+  | appTerm {printfn "unary term 2"}//{ $1 }
+
+appTerm:
+  | atomicTerm hashAtomicTerms
+      {printfn "app term"}//{ mkApp $1 $2 (rhs2 parseState 1 2) }
+
+atomicTerm:
+//  | UNDERSCORE { mk_term Wild (rhs parseState 1) Un }
+//  | ASSERT   { mk_term (Var assert_lid) (rhs parseState 1) Expr }
+  | ident     {printfn "ident"} //{ mk_term (Tvar($1)) (rhs parseState 1) Type }
+  | rawConstant {printfn "raw constant"} //{ mk_term (Const $1) (rhs parseState 1) Expr }
+  /*| LENS_PAREN_LEFT tupleN LENS_PAREN_RIGHT 
+      { 
+        match $2 with 
+          | [x] -> x
+          | components -> mkDTuple components (rhs2 parseState 1 1)
+      }
+  | projectionLHS maybeFieldProjections 
+      {  
+        fold_left (fun e f -> 
+                          mk_term (Project(e, lid_of_ids [f])) (rhs2 parseState 1 3) Expr )
+          $1 $2
+      }
+  | BANG atomicTerm
+      { mk_term (Op("!", [$2])) (rhs2 parseState 1 2) Expr }
+  | BEGIN term END 
+      { $2 }
+*/
+
+maybeHash: 
+  |      {printfn "maybeHash 1"}//{ Nothing }
+  | HASH {printfn "maybeHash 2"}//{ Hash }
+
+hashAtomicTerms:
+  |        {printfn "hashAtomicTerms1"}//{ [] }
+  | atomicTerm hashAtomicTerms {printfn "hashAtomicTerms2"} //{ ($2, $1)::$3 }
+  //| maybeHash atomicTerm hashAtomicTerms {printfn "hashAtomicTerms2"} //{ ($2, $1)::$3 }
+
+atomicTerms: 
+  |       {} //{ [] }
+  | atomicTerm atomicTerms {}//{ $1::$2 }
+
+
+fstarTypeDeclOpt: 
+   | VAL ident COLON fst_typ {printfn "GSV FSTAR!!!"}//{ Val($1, $3, $5) }
+   | {}
+
+
+/* FSTAR */
+
 /* A single definition in a namespace, module or interaction. */
 /* This is used by both "fsi" interactions and "source file" fragments defined by moduleDefns */
 moduleDefn:
 
   /* 'let' definitions in non-#light*/
-  | opt_attributes opt_declVisibility defnBindings                   %prec decl_let 
-      { if isSome $2 then errorR(Error(FSComp.SR.parsVisibilityDeclarationsShouldComePriorToIdentifier(),rhs parseState 2));
+  | opt_attributes fstarTypeDeclOpt opt_declVisibility defnBindings                   %prec decl_let 
+      { if isSome $3 then errorR(Error(FSComp.SR.parsVisibilityDeclarationsShouldComePriorToIdentifier(),rhs parseState 2));
         parseState.ResetSynArgNameGenerator();
-        let (BindingSetPreAttrs(_,_,_,_,mWhole)) = $3 
-        mkDefnBindings (mWhole,$3,$1,$2,mWhole)  }
+        let (BindingSetPreAttrs(_,_,_,_,mWhole)) = $4
+        mkDefnBindings (mWhole,$4,$1,$3,mWhole)  }
 
   /* 'let' or 'do' definitions in #light */
-  | opt_attributes opt_declVisibility hardwhiteLetBindings          %prec decl_let 
-      { let hwlb,m = $3
-        if isSome $2 then errorR(Error(FSComp.SR.parsVisibilityDeclarationsShouldComePriorToIdentifier(),rhs parseState 2));
+  | opt_attributes fstarTypeDeclOpt opt_declVisibility hardwhiteLetBindings          %prec decl_let 
+      { let hwlb,m = $4
+        if isSome $3 then errorR(Error(FSComp.SR.parsVisibilityDeclarationsShouldComePriorToIdentifier(),rhs parseState 2));
         parseState.ResetSynArgNameGenerator();
-        mkDefnBindings (m,hwlb,$1,$2,m)  }
+        mkDefnBindings (m,hwlb,$1,$3,m)  }
 
   /* 'do' definitions in non-#light*/
   | opt_attributes opt_declVisibility doBinding %prec decl_let 
@@ -2193,8 +2468,8 @@ typeConstraint:
         | nm -> raiseParseErrorAt (rhs parseState 3) (FSComp.SR.parsUnexpectedIdentifier(nm)) }
 
 typarAlts:
-	| typarAlts OR typar { $3::$1 }
-	| typar { [$1] }	
+    | typarAlts OR typar { $3::$1 }
+    | typar { [$1] }    
 
 /* The core of a union type definition */
 unionTypeRepr:

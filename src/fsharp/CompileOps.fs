@@ -776,6 +776,13 @@ let OutputPhasedErrorR (os:System.Text.StringBuilder) (err:PhasedError) =
 
           let tokenIdToText tid = 
               match tid with 
+              | Parser.TOKEN_IFF -> getErrorString("Parser.TOKEN.IFF")
+              | Parser.TOKEN_IMPLIES -> getErrorString("Parser.TOKEN.IMPLIES")
+              | Parser.TOKEN_DISJUNCTION -> getErrorString("Parser.TOKEN.DISJUNCTION")
+              | Parser.TOKEN_CONJUNCTION -> getErrorString("Parser.TOKEN.CONJUNCTION")
+              | Parser.TOKEN_FORALL -> getErrorString("Parser.TOKEN.FORALL")
+              | Parser.TOKEN_EXIST -> getErrorString("Parser.TOKEN.EXIST")
+
               | Parser.TOKEN_IDENT -> getErrorString("Parser.TOKEN.IDENT")
               | Parser.TOKEN_BIGNUM 
               | Parser.TOKEN_INT8  
