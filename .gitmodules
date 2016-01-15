@@ -1,0 +1,3 @@
+[submodule "src/FStar"]
+	path = src/FStar
+	url = https://github.com/YaccConstructor/FStar.git

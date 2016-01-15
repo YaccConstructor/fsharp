@@ -18,6 +18,13 @@ open Microsoft.FSharp.Compiler.Lib
 open Microsoft.FSharp.Compiler.PrettyNaming
 open Microsoft.FSharp.Compiler.ErrorLogger
 
+//open FStar.Util
+//open FStar.Absyn.Syntax
+//open FStar.Absyn.Const
+//open FStar.Absyn.Util
+open FStar.Parser.AST
+//open FStar.Parser.Util
+
 #if DEBUG
 let debugPrint(s) =
     if Internal.Utilities.Text.Parsing.Flags.debug then 
@@ -25,6 +32,34 @@ let debugPrint(s) =
 #else
 let debugPrint(s) = ignore s
 #endif
+
+let mkFStarIdent (id:Microsoft.FSharp.Compiler.Ast.Ident) = FStar.Absyn.Syntax.mk_ident (id.idText, 0L)
+
+let mkFStarSConst sconst =
+    match sconst with
+    | Microsoft.FSharp.Compiler.Ast.SynConst.Unit     -> FStar.Absyn.Syntax.Const_unit
+    | Microsoft.FSharp.Compiler.Ast.SynConst.Bool d   -> FStar.Absyn.Syntax.Const_bool d
+    | Microsoft.FSharp.Compiler.Ast.SynConst.Int32 d  -> FStar.Absyn.Syntax.Const_int32 d
+    | Microsoft.FSharp.Compiler.Ast.SynConst.Int64 d  -> FStar.Absyn.Syntax.Const_int64 d
+    //| Double of double -> FStar.Absyn.Syntax.
+    | Microsoft.FSharp.Compiler.Ast.SynConst.Char d   -> FStar.Absyn.Syntax.Const_char d
+    //| Decimal of System.Decimal  -> FStar.Absyn.Syntax.
+    //| String of string * range-> FStar.Absyn.Syntax. 
+    | Microsoft.FSharp.Compiler.Ast.SynConst.Bytes (d,r)  -> FStar.Absyn.Syntax.Const_bytearray (d,0L)
+    | _ -> failwith "unsupported constant if F# to F* translator"
+
+(*  | Const_unit
+  | Const_uint8       of byte
+  | Const_bool        of bool
+  | Const_int32       of int32
+  | Const_int64       of int64
+  | Const_int         of string                               //arbitrary length integer constants
+  | Const_char        of char
+  | Const_float       of double
+  | Const_bytearray   of array<byte> * Range.range
+  | Const_string      of array<byte> * Range.range           (* unicode encoded, F#/Caml independent *)
+
+  *)  
 
 let exprFromParseError (e:SynExpr) = SynExpr.FromParseError(e,e.Range)
 let patFromParseError (e:SynPat) = SynPat.FromParseError(e, e.Range)
@@ -1183,7 +1218,7 @@ moduleDefnOrDirective:
 /* FSTAR */
 
 fst_typ:
-   fst_simpleTerm  { printfn "fst_type" } // { $1 }
+   fst_simpleTerm  { $1 }
 
 /*  | FORALL binders DOT qpat noSeqTerm
       {
@@ -1201,7 +1236,7 @@ fst_typ:
 */
 
 fst_simpleTerm:
-   tmIff {}//{ $1 }
+   tmIff { $1 }
 
   /*| FUN atomicPattern atomicPatterns funArrow term
       {
@@ -1210,50 +1245,42 @@ fst_simpleTerm:
     */
 
 tmIff:
-  | tmImplies IFF tmIff  {}
-      /*{
-        mk_term (Op("<==>", [$1; $3])) (rhs2 parseState 1 3) Formula
-      } */
+  | tmImplies IFF tmIff
+      {
+        mk_term (Op("<==>", [$1; $3])) 0L(*(rhs2 parseState 1 3)*) Formula
+      } 
 
-  | tmImplies{}
-      //{ $1 }
-
-impl_t: tmDisjunction IMPLIES {printfn "impl head"}
+  | tmImplies { $1 }
 
 tmImplies:
-  | impl_t tmImplies {printfn "implies 1"}
-      /*{
-        mk_term (Op("==>", [$1; $3])) (rhs2 parseState 1 3) Formula
-      } */
+  | tmDisjunction IMPLIES tmImplies 
+      { mk_term (Op("==>", [$1; $3])) 0L(*rhs2 parseState 1 3*) Formula } 
 
-  | tmDisjunction  {printfn "implies 2"}
-      //{ $1 }
+  | tmDisjunction { $1 }
 
 tmDisjunction:
-  | tmDisjunction DISJUNCTION tmConjunction {}
-      //{ mk_term (Op("\\/", [$1;$3])) (rhs2 parseState 1 3) Formula }
+  | tmDisjunction DISJUNCTION tmConjunction 
+      { mk_term (Op("\\/", [$1;$3])) 0L(*rhs2 parseState 1 3*) Formula }
       
-  | tmConjunction {}
-      //{ $1 }
+  | tmConjunction { $1 }
 
 tmConjunction:
-  | tmConjunction CONJUNCTION tupleExpr {}
-      //{ mk_term (Op("/\\", [$1;$3])) (rhs2 parseState 1 3) Formula }
+  | tmConjunction CONJUNCTION tmTuple 
+      { mk_term (Op("/\\", [$1;$3])) 0L(*(rhs2 parseState 1 3*) Formula }
 
-  | tmTuple {}
-      //{ $1 }
+  | tmTuple { $1 }
 
 tmTuple:
-  | tupleN {printfn "tmTuple"}
-     /* {
+  | tupleN 
+      {
         match $1 with 
           | [x] -> x
-          | components -> mkTuple components (rhs2 parseState 1 1)
-      }*/
+          | components -> mkTuple components 0L(*(rhs2 parseState 1 1*)
+      }
 
 tupleN:
-  | tmEq                   {} //    { [$1] }
-  | tmEq COMMA tupleN      {} // { $1::$3 }
+  | tmEq                   { [$1] }
+  | tmEq COMMA tupleN      { $1::$3 }
 
 
 tmEq:
@@ -1262,133 +1289,118 @@ tmEq:
         mk_term (Op(":=", [$1; $3])) (rhs2 parseState 1 3) Un
       }
 */
-  | tmOr {}
-  //    { $1 }
+  | tmOr { $1 }
 
 tmOr:
   | tmOr BAR_BAR tmAnd
-     {} // { mk_term (Op("||", [$1; $3])) (rhs2 parseState 1 3) Un}
+     { mk_term (Op("||", [$1; $3])) 0L(*(rhs2 parseState 1 3*) Un}
 
-  | tmAnd
-      {}//{ $1 }
+  | tmAnd { $1 }
 
 tmAnd:
   | tmAnd AMP_AMP cmpTerm
-      {}//{ mk_term (Op("&&", [$1;$3])) (rhs2 parseState 1 3) Un}
+      { mk_term (Op("&&", [$1;$3])) 0L(*(rhs2 parseState 1 3*) Un}
 
   | cmpTerm
-      {}//{ $1 }
+      { $1 }
 
-ddd: cmpTerm comparisonOp {printfn "conp head"}
-      
 cmpTerm:
-  | ddd tmCons
-      {printfn "cmpTerm 1"}//{ mk_term (Op($2, [$1;$3])) (rhs2 parseState 1 3) Expr }
+  | cmpTerm comparisonOp tmCons
+      { mk_term (Op($2, [$1;$3])) 0L(*(rhs2 parseState 1 3*) Expr }
   | tmCons 
-      {printfn "cmpTerm 2"}//{ $1 }
+      { $1 }
 
 comparisonOp:
  // | CUSTOM_OP { $1 }
-  | EQUALS    {}//{ "=" }
-  | LESS {}
-  | GREATER {}
-  | INFIX_COMPARE_OP {}
+  | EQUALS    { "=" }
+  | LESS { "<" }
+  | GREATER {">"}
+  | INFIX_COMPARE_OP {"<"}
  
 tmCons:
   | product COLON_COLON tmCons
-      {}//{ consTerm (rhs parseState 2) $1 $3 }
+      { consTerm 0L(*(rhs parseState 2*) $1 $3 }
 
   | product
-      {}//{ $1 }
+      { $1 }
 
 product: 
-  | productDomain RARROW product {printfn "product1"}
-    /* {
+  | productDomain RARROW product  {
         let aq, tm = $1 in 
         let b = match extract_named_refinement tm with 
-            | None -> mk_binder (NoName tm) (rhs parseState 1) Un aq
-            | Some (x, t, f) -> mkRefinedBinder x t f (rhs2 parseState 1 1) aq in
-        mk_term (Product([b], $3)) (rhs2 parseState 1 3)  Un
+            | None -> mk_binder (NoName tm) 0L(*(rhs parseState 1*) Un aq
+            | Some (x, t, f) -> mkRefinedBinder x t f 0L(*(rhs2 parseState 1 1*) aq in
+        mk_term (Product([b], $3)) 0L(*(rhs2 parseState 1 3*)  Un
      
-     }*/
+     }
 
   | dtupleTerm 
-      {printfn "product2"} //{ $1 }
+      { $1 }
 
 productDomain:
-  | aqual dtupleTerm {} //{ (Some $1, $2) }
-  | dtupleTerm      {} //{ (None, $1)    }
+  | aqual dtupleTerm { (Some $1, $2) }
+  | dtupleTerm       { (None, $1)    }
 
 dtupleTerm:
-  | arithTerm AMP dtupleTerm {}
-      /*{ 
+  | arithTerm AMP dtupleTerm 
+      { 
         let x, t, f = match extract_named_refinement $1 with 
             | Some (x, t, f) -> x, t, f
-            | _ -> raise (Error("Missing binder for the first component of a dependent tuple", rhs2 parseState 1 2)) in
-        let dom = mkRefinedBinder x t f (rhs2 parseState 1 2) None in
+            | _ -> failwith "Missing binder for the first component of a dependent tuple"
+        in
+        let dom = mkRefinedBinder x t f 0L(*(rhs2 parseState 1 2*) None in
         let tail = $3 in
         let dom, res = match tail.tm with 
-            | Sum(dom', res) -> dom::dom', res
+            | Sum(dom1, res) -> dom::dom1, res
             | _ -> [dom], tail in 
-        mk_term (Sum(dom, res)) (rhs2 parseState 1 6) Type
-      } */
+        mk_term (Sum(dom, res)) 0L(*(rhs2 parseState 1 6*) Type
+      } 
 
-  | arithTerm
-     {} //{ $1 }
+  | arithTerm { $1 }
   
 arithTerm:
-  | plusOp 
-      {printfn "arith term"}//{ $1 }
+  | plusOp { $1 }
 
 plusOp:
   | minusOp PLUS_MINUS_OP plusOp
-      {}//{ mk_term (Op("+", [$1;$3])) (rhs2 parseState 1 3) Un}
+      { mk_term (Op("+", [$1;$3])) 0L(*(rhs2 parseState 1 3*) Un}
 
-  | minusOp
-      {} //{ $1 }
+  | minusOp { $1 }
 
 minusOp:
   /*| minusOp MINUS_OP starDivModTerm
       { mk_term (Op("-", [$1;$3])) (rhs2 parseState 1 3) Un}
     */
-  | starDivModTerm 
-      {}//{ $1 }
+  | starDivModTerm { $1 }
 
 
 starDivModTerm:
-  | refinementTerm STAR starDivModTerm {}
-    /*  { 
-        mk_term (Op("*", [$1;$3])) (rhs2 parseState 1 3) Un
-      }*/
+  | refinementTerm STAR starDivModTerm 
+      { mk_term (Op("*", [$1;$3])) 0L(*(rhs2 parseState 1 3*) Un }
 
  /* | unaryTerm DIV_MOD_OP starDivModTerm
       { mk_term (Op($2, [$1;$3])) (rhs2 parseState 1 3) Un}
    */
-  | refinementTerm
-     {}//{ $1 }
-
-
-fst_ss: ident COLON appTerm LBRACE {printfn "!!!!!!"}
+  | refinementTerm { $1 }
 
 refinementTerm:
-  | ident COLON appTerm {printfn "refinementTerm 1"}
-      /*{
-        mk_term (NamedTyp($1, $3)) (rhs2 parseState 1 3) Type 
-      }*/
+  | ident COLON appTerm 
+      {
+        mk_term (NamedTyp(mkFStarIdent $1, $3)) 0L(*(rhs2 parseState 1 3*) Type 
+      }
       
-  | fst_ss fst_typ rbrace {printfn "refinementTerm 2"}
-/*      {
-        mk_term (Refine(mk_binder (Annotated($1, $3)) (rhs2 parseState 1 3) Type None, $5)) 
-        (rhs2 parseState 1 6) Type
-      }*/
+  | ident COLON appTerm LBRACE fst_typ rbrace 
+      {
+        mk_term (Refine(mk_binder (Annotated(mkFStarIdent $1, $3)) 0L(*rhs2 parseState 1 3*) Type None, $5)) 0L(*(rhs2 parseState 1 6*) Type
+      }
 /*      
   | LBRACE recordExp RBRACE { $2 }
 */
-  | unaryTerm {printfn "refinementTerm 3"} //{ $1 }
+  | unaryTerm { $1 }
   
 aqual:
-  //| HASH      //{ Implicit }
-  | EQUALS   {} //{ Equality }
+  | HASH     { FStar.Absyn.Syntax.Implicit }
+  | EQUALS   { FStar.Absyn.Syntax.Equality }
 
 /*refineOpt:
   |                       {} //{ None }
@@ -1398,7 +1410,7 @@ aqual:
 
 unaryTerm: 
   | PLUS_MINUS_OP atomicTerm
-    {}//  { mk_term (Op("+", [$2])) (rhs2 parseState 1 3) Expr }
+     { mk_term (Op("+", [$2])) 0L(*(rhs2 parseState 1 3*) Expr }
 
   /*| MINUS_OP atomicTerm
       { mk_term (Op("-", [$2])) (rhs2 parseState 1 3) Expr }
@@ -1406,17 +1418,17 @@ unaryTerm:
   | TILDE atomicTerm
       { mk_term (Op($1, [$2])) (rhs2 parseState 1 3) Formula }
     */
-  | appTerm {printfn "unary term 2"}//{ $1 }
+  | appTerm { $1 }
 
 appTerm:
   | atomicTerm hashAtomicTerms
-      {printfn "app term"}//{ mkApp $1 $2 (rhs2 parseState 1 2) }
+      { mkApp $1 $2 0L(*(rhs2 parseState 1 2*) }
 
 atomicTerm:
 //  | UNDERSCORE { mk_term Wild (rhs parseState 1) Un }
 //  | ASSERT   { mk_term (Var assert_lid) (rhs parseState 1) Expr }
-  | ident     {printfn "ident"} //{ mk_term (Tvar($1)) (rhs parseState 1) Type }
-  | rawConstant {printfn "raw constant"} //{ mk_term (Const $1) (rhs parseState 1) Expr }
+  | ident  { mk_term (Tvar(mkFStarIdent $1)) 0L(*(rhs parseState 1*) Type }
+  | rawConstant { mk_term (Const (mkFStarSConst $1)) 0L(*(rhs parseState 1*) Expr }
   /*| LENS_PAREN_LEFT tupleN LENS_PAREN_RIGHT 
       { 
         match $2 with 
@@ -1436,21 +1448,20 @@ atomicTerm:
 */
 
 maybeHash: 
-  |      {printfn "maybeHash 1"}//{ Nothing }
-  | HASH {printfn "maybeHash 2"}//{ Hash }
+  |      { Nothing }
+  | HASH { Hash }
 
 hashAtomicTerms:
-  |        {printfn "hashAtomicTerms1"}//{ [] }
-  | atomicTerm hashAtomicTerms {printfn "hashAtomicTerms2"} //{ ($2, $1)::$3 }
-  //| maybeHash atomicTerm hashAtomicTerms {printfn "hashAtomicTerms2"} //{ ($2, $1)::$3 }
+  |        { [] }
+  //| atomicTerm hashAtomicTerms {printfn "hashAtomicTerms2"} //{ ($2, $1)::$3 }
+  | maybeHash atomicTerm hashAtomicTerms { ($2, $1)::$3 }
 
 atomicTerms: 
-  |       {} //{ [] }
-  | atomicTerm atomicTerms {}//{ $1::$2 }
-
+  |       { [] }
+  | atomicTerm atomicTerms { $1::$2 }
 
 fstarTypeDeclOpt: 
-   | VAL ident COLON fst_typ {printfn "GSV FSTAR!!!"}//{ Val($1, $3, $5) }
+   | VAL ident COLON fst_typ { Val([], mkFStarIdent $2, $4) |> printfn "FSTAR!!!! \n %A"}
    | {}
 
 
