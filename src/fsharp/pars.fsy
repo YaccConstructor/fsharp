@@ -33,6 +33,8 @@ let debugPrint(s) =
 let debugPrint(s) = ignore s
 #endif
 
+let fStarVals = new ResizeArray<_>()
+
 let mkFStarIdent (id:Microsoft.FSharp.Compiler.Ast.Ident) = FStar.Absyn.Syntax.mk_ident (id.idText, 0L)
 
 let mkFStarSConst sconst =
@@ -1461,7 +1463,7 @@ atomicTerms:
   | atomicTerm atomicTerms { $1::$2 }
 
 fstarTypeDeclOpt: 
-   | VAL ident COLON fst_typ { Val([], mkFStarIdent $2, $4) |> printfn "FSTAR!!!! \n %A"}
+   | VAL ident COLON fst_typ { Val([], mkFStarIdent $2, $4) |> fStarVals.Add }
    | {}
 
 

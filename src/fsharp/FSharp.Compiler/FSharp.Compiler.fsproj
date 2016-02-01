@@ -434,7 +434,10 @@
     <Compile Include="..\IlxGen.fs">
       <Link>CodeGen\IlxGen.fs</Link>
     </Compile>
-    <Compile Include="..\CompileOps.fsi">
+    <Compile Include="..\FStarTranslator.fs">
+      <Link>Driver\FStarTranslator.fs</Link>
+    </Compile>
+     <Compile Include="..\CompileOps.fsi">
       <Link>Driver\CompileOps.fsi</Link>
     </Compile>
     <Compile Include="..\CompileOps.fs">

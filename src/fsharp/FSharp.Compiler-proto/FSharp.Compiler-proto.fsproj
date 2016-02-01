@@ -404,6 +404,9 @@
     <Compile Include="..\TraceCall.fs">
       <Link>TraceCall.fs</Link>
     </Compile>
+    <Compile Include="..\FStarTranslator.fs">
+      <Link>Driver\FStarTranslator.fs</Link>
+    </Compile>
     <Compile Include="..\CompileOps.fsi">
       <Link>CompileOps.fsi</Link>
     </Compile>

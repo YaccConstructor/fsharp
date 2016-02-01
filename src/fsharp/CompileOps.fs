@@ -3173,6 +3173,7 @@ let ParseInput (lexer,errorLogger:ErrorLogger,lexbuf:UnicodeLexing.Lexbuf,defaul
 
             if FSharpImplFileSuffixes |> List.exists (Filename.checkSuffix lower)   then  
                 let impl = Parser.implementationFile lexer lexbuf 
+                Parser.fStarVals |> Seq.iter (fun x -> printfn "%A" x)
                 PostParseModuleImpls (defaultNamespace,filename,isLastCompiland,impl)
             elif FSharpSigFileSuffixes |> List.exists (Filename.checkSuffix lower)  then  
                 let intfs = Parser.signatureFile lexer lexbuf 
