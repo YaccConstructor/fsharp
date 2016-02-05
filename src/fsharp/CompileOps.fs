@@ -3172,8 +3172,8 @@ let ParseInput (lexer,errorLogger:ErrorLogger,lexbuf:UnicodeLexing.Lexbuf,defaul
                 mlCompatWarning (FSComp.SR.buildCompilingExtensionIsForML()) rangeStartup; 
 
             if FSharpImplFileSuffixes |> List.exists (Filename.checkSuffix lower)   then  
-                let impl = Parser.implementationFile lexer lexbuf 
-                Parser.fStarVals |> Seq.iter (fun x -> printfn "%A" x)
+                let impl = Parser.implementationFile lexer lexbuf                  
+                FStarTramslator.toFStar Parser.fStarVals errorLogger
                 PostParseModuleImpls (defaultNamespace,filename,isLastCompiland,impl)
             elif FSharpSigFileSuffixes |> List.exists (Filename.checkSuffix lower)  then  
                 let intfs = Parser.signatureFile lexer lexbuf 
