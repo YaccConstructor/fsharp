@@ -1,3 +1,10 @@
+## Current Build Status
+
+| F#   | Branch        | Windows |
+|------|---------------|---------|
+| 4.0+ | ``master``    | [![Build status](https://ci.appveyor.com/api/projects/status/p6wa43fyi2lmnmbo/branch/master?svg=true)](https://ci.appveyor.com/project/gsvgit/fsharp/branch/master) |
+| 4.0+ | ``fstar``     | [![Build status](https://ci.appveyor.com/api/projects/status/p6wa43fyi2lmnmbo/branch/fstar?svg=true)](https://ci.appveyor.com/project/gsvgit/fsharp/branch/fstar) |
+
 ## The Open Edition of the F# Compiler, Core Library & Tools
 
 The main purpose of this repository is to package the open editions of the F# compiler, core library
@@ -36,16 +43,6 @@ The `master` branch is for F# 4.x. The `fsharp4` branch archives F# 4.0, the `fs
 To bootstrap the compiler, binaries built from an earlier version of this project are used.
 
 This codebase uses the Apache 2.0 license.
-
-## Current Build Status
-
-| F#   | Branch        | OSX/Linux | Windows |
-|------|---------------|-----------|---------|
-| 4.0+ | ``master``    | [![Build Status](https://travis-ci.org/fsharp/fsharp.png?branch=master)](https://travis-ci.org/fsharp/fsharp/branches) | [![Build status](https://ci.appveyor.com/api/projects/status/7m5e2yr0snbbr7t9)](https://ci.appveyor.com/project/fsgit/fsharp) |
-| 4.0  | ``fsharp4``   | [![Build Status](https://travis-ci.org/fsharp/fsharp.png?branch=fsharp4)](https://travis-ci.org/fsharp/fsharp/branches) |
-| 3.1  | ``fsharp31``  | [![Build Status](https://travis-ci.org/fsharp/fsharp.png?branch=fsharp31)](https://travis-ci.org/fsharp/fsharp/branches) |
-| 3.0  | ``fsharp_30`` | [![Build Status](https://travis-ci.org/fsharp/fsharp.png?branch=fsharp_30)](https://travis-ci.org/fsharp/fsharp/branches) |
-
 
 ## NuGet Feed of FSharp.Core and FSharp.Compiler.Tools packages
 
